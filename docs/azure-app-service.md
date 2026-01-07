@@ -4,11 +4,11 @@
 
 - Azure subscription
 - App Service plan (Linux)
-- Node.js 18+ runtime
+- Node.js 20+ runtime
 
 ## Quick Steps (Portal)
 
-1. Create an App Service (Linux, Node 18+).
+1. Create an App Service (Linux, Node 20+).
 2. In Configuration, set:
    - `NODE_ENV=production`
 3. Deploy:

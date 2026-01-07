@@ -4,6 +4,8 @@ Validate NIH biosketch structure, flag formatting issues, extract publications, 
 
 ## Setup
 
+Node.js 20+ is recommended (required by `pdf-parse`).
+
 ```bash
 npm install
 ```
