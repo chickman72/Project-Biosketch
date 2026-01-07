@@ -1,0 +1,20 @@
+NIH BIOSKETCH (SYNTHETIC SAMPLE)
+
+A. Personal Statement
+I am a translational scientist focused on cardiovascular imaging and data-driven diagnostics.
+My work spans clinical trials, radiomics, and informatics training programs. This section is
+intentionally short for MVP testing and should be expanded in real submissions.
+
+B. Positions and Honors
+2018-present  Associate Professor, Department of Biomedical Engineering
+2015-2018     Assistant Professor, Department of Biomedical Engineering
+Selected honors include NIH R01 award and institutional teaching recognition.
+
+C. Contributions to Science
+1. Smith J, Nguyen K, Patel R. 2021. Machine learning for cardiac MRI. Journal of Imaging.
+2. Lee A, Carter B, Smith J. 2019. Radiomics pipelines in heart failure. Med Imaging Journal. DOI:10.1000/xyz123
+3. Smith J, Doe P. 2017. Multimodal biomarkers for cardiomyopathy. Clin Transl Sci. PMID:12345678
+
+D. Education/Training
+2010-2014 PhD Biomedical Engineering, University A
+2006-2010 BS Electrical Engineering, University B

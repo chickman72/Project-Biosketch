@@ -1,0 +1,62 @@
+{
+  "name": "NIH Biosketch (MVP)",
+  "version": "2024-08",
+  "requiredSections": [
+    {
+      "id": "personal_statement",
+      "canonicalHeading": "Personal Statement",
+      "variants": ["A. Personal Statement", "Personal Statement", "Personal Statement (A)"],
+      "minChars": 200
+    },
+    {
+      "id": "positions_honors",
+      "canonicalHeading": "Positions and Honors",
+      "variants": ["B. Positions and Honors", "Positions and Honors", "Positions & Honors", "B. Positions, Scientific Appointments, and Honors"],
+      "minChars": 150
+    },
+    {
+      "id": "contributions_science",
+      "canonicalHeading": "Contributions to Science",
+      "variants": ["C. Contributions to Science", "Contributions to Science"],
+      "minChars": 500
+    },
+    {
+      "id": "education_training",
+      "canonicalHeading": "Education/Training",
+      "variants": ["D. Education/Training", "Education/Training", "Education and Training", "EDUCATION/TRAINING"],
+      "minChars": 100
+    },
+      {
+      "id": "personal_name",
+      "canonicalHeading": "Name",
+      "variants": ["NAME"],
+      "minChars": 10
+    }
+  ],
+  "optionalSections": [
+    {
+      "id": "research_support",
+      "canonicalHeading": "Research Support",
+      "variants": ["Research Support", "Current and Pending Support"],
+      "minChars": 100
+    },
+    {
+      "id": "publications",
+      "canonicalHeading": "Publications",
+      "variants": ["Publications", "Selected Publications", "Relevant Publications"],
+      "minChars": 100
+    }
+  ],
+  "order": [
+    "personal_statement",
+    "positions_honors",
+    "contributions_science",
+    "education_training",
+    "research_support",
+    "publications"
+  ],
+  "unknownHeadingHeuristic": {
+    "maxHeadingLength": 80,
+    "allowAllCaps": true
+  }
+}
