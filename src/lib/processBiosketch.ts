@@ -37,10 +37,19 @@ export async function processBiosketchFile(
     ? await enhancer.enhanceHeadings(parsed.text)
     : parsed.text;
 
+  const llmStructuredData = enhancer.enabled
+    ? await enhancer.extractStructuredData(enhancedText)
+    : null;
+
   const template = await loadTemplate();
   const { issues, detectedSections, biosketchData } = validateTemplate(enhancedText, template);
 
-  const corrected = generateCorrectedDraft(detectedSections, template, biosketchData);
+  const corrected = generateCorrectedDraft(
+    detectedSections,
+    template,
+    biosketchData,
+    llmStructuredData
+  );
 
   const overallStatus = issues.some((issue) => issue.severity === "red")
     ? "red"
@@ -63,5 +72,6 @@ export async function processBiosketchFile(
     publications: allPublications,
     lowConfidence: parsed.lowConfidence,
     biosketchData,
+    llmStructuredData,
   };
 }

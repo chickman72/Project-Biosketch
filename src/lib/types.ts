@@ -60,6 +60,7 @@ export type ValidationResult = {
   publications: Publication[];
   lowConfidence: boolean;
   biosketchData: Partial<BiosketchData>;
+  llmStructuredData: unknown | null;
 };
 
 export type TemplateSection = {

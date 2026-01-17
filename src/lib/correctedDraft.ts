@@ -20,7 +20,8 @@ function escapeHtml(input: string): string {
 export function generateCorrectedDraft(
   sections: DetectedSection[],
   template: TemplateConfig,
-  biosketchData: Partial<BiosketchData> = {}
+  biosketchData: Partial<BiosketchData> = {},
+  llmStructuredData: unknown | null = null
 ): { markdown: string; html: string } {
   const sectionById = new Map<string, DetectedSection[]>();
   for (const section of sections) {
@@ -418,6 +419,31 @@ export function generateCorrectedDraft(
     return escapeOrPlaceholder(fallbackContent, placeholder);
   };
 
+  const renderSupplementContributionsHtml = (
+    contributions: ContributionToScience[] | undefined,
+    fallbackContent: string,
+    placeholder: string
+  ) => {
+    if (contributions && contributions.length) {
+      return contributions
+        .map((contribution, idx) => {
+          const products = contribution.products || [];
+          const productsHtml = products.length
+            ? `<ol>${products
+                .map((pub) => `<li>${escapeHtml(formatCitation(pub))}</li>`)
+                .join("")}</ol>`
+            : "";
+          return `<div class="section">
+            <h3>Contribution ${idx + 1}</h3>
+            <p>${escapeHtml(contribution.description)}</p>
+            ${productsHtml}
+          </div>`;
+        })
+        .join("");
+    }
+    return escapeOrPlaceholder(fallbackContent, placeholder);
+  };
+
   const renderPublicationListMarkdown = (
     publications: Publication[] | undefined,
     fallbackContent: string,
@@ -481,6 +507,31 @@ export function generateCorrectedDraft(
     return fallbackContent.trim() ? fallbackContent : `*${placeholder}*`;
   };
 
+  const renderSupplementContributionsMarkdown = (
+    contributions: ContributionToScience[] | undefined,
+    fallbackContent: string,
+    placeholder: string
+  ) => {
+    if (contributions && contributions.length) {
+      return contributions
+        .map((contribution, idx) => {
+          const products = contribution.products || [];
+          const productsMd = products.length
+            ? products.map((pub) => `- ${formatCitation(pub)}`).join("\n")
+            : "";
+          return [
+            `### Contribution ${idx + 1}`,
+            contribution.description,
+            productsMd,
+          ]
+            .filter(Boolean)
+            .join("\n");
+        })
+        .join("\n\n");
+    }
+    return fallbackContent.trim() ? fallbackContent : `*${placeholder}*`;
+  };
+
   const getSectionContent = (id: string) => {
     const matches = sectionById.get(id);
     if (!matches || matches.length === 0) {
@@ -498,6 +549,33 @@ export function generateCorrectedDraft(
         section.originalHeading.toLowerCase().includes(target)
     );
     return match ? match.content.trim() : "";
+  };
+
+  const getLlmHonors = () => {
+    if (!llmStructuredData || typeof llmStructuredData !== "object") {
+      return [];
+    }
+    const supplement = (llmStructuredData as { supplement?: unknown }).supplement;
+    if (!supplement || typeof supplement !== "object") {
+      return [];
+    }
+    const honors = (supplement as { honors?: unknown }).honors;
+    if (!Array.isArray(honors)) {
+      return [];
+    }
+    return honors
+      .map((item) => {
+        if (!item || typeof item !== "object") {
+          return null;
+        }
+        const year = String((item as { year?: unknown }).year ?? "").trim();
+        const honor = String((item as { honor_name?: unknown }).honor_name ?? "").trim();
+        if (!year && !honor) {
+          return null;
+        }
+        return { year, honor };
+      })
+      .filter((item): item is { year: string; honor: string } => Boolean(item));
   };
 
   const splitInlineSection = (content: string, heading: string) => {
@@ -527,6 +605,59 @@ export function generateCorrectedDraft(
       .join("\n")
       .trim();
     return { main, extracted };
+  };
+
+  const normalizeCertificationText = (content: string, exactText?: string) => {
+    const trimmed = content.trim();
+    if (!trimmed && exactText) {
+      return exactText;
+    }
+    if (exactText && trimmed.includes(exactText)) {
+      return exactText;
+    }
+    if (!trimmed) {
+      return "";
+    }
+
+    const lines = trimmed
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .filter(
+        (line) =>
+          !/^certified by\b/i.test(line) &&
+          !/^nih biographical sketch\b/i.test(line) &&
+          !/^omb no\./i.test(line)
+      );
+
+    const normalized = lines.join("\n");
+    const coreSentence =
+      "I certify that the information provided is current, accurate, and complete.";
+    const firstIndex = normalized.indexOf(coreSentence);
+    if (firstIndex !== -1) {
+      const secondIndex = normalized.indexOf(
+        coreSentence,
+        firstIndex + coreSentence.length
+      );
+      if (secondIndex !== -1) {
+        return normalized.slice(firstIndex, secondIndex).trim();
+      }
+    }
+
+    const parts = normalized
+      .split(/\n{2,}/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const seen = new Set<string>();
+    const uniqueParts: string[] = [];
+    for (const part of parts) {
+      if (seen.has(part)) {
+        continue;
+      }
+      seen.add(part);
+      uniqueParts.push(part);
+    }
+    return uniqueParts.join("\n\n");
   };
 
   const extractHeaderInfo = () => {
@@ -559,6 +690,32 @@ export function generateCorrectedDraft(
       positionTitle: getValue(/^(position title|title)\b/i),
       organization: getValue(/^(organization|organization\/location|location)\b/i),
     };
+  };
+
+  const getLlmHeaderInfo = () => {
+    if (!llmStructuredData || typeof llmStructuredData !== "object") {
+      return null;
+    }
+    const commonForm = (llmStructuredData as { common_form?: unknown }).common_form;
+    if (!commonForm || typeof commonForm !== "object") {
+      return null;
+    }
+    const header = (commonForm as { header?: unknown }).header;
+    if (!header || typeof header !== "object") {
+      return null;
+    }
+    const name = String((header as { name?: unknown }).name ?? "").trim();
+    const pid = String((header as { pid_orcid?: unknown }).pid_orcid ?? "").trim();
+    const positionTitle = String(
+      (header as { position_title?: unknown }).position_title ?? ""
+    ).trim();
+    const organization = String(
+      (header as { organization_location?: unknown }).organization_location ?? ""
+    ).trim();
+    if (!name && !pid && !positionTitle && !organization) {
+      return null;
+    }
+    return { name, pid, positionTitle, organization };
   };
 
   const parseAppointments = (content: string) => {
@@ -679,14 +836,14 @@ export function generateCorrectedDraft(
   const certificationRule = allSections.find(
     (section) => section.id === "certification_statement"
   );
-  const headerInfo = extractHeaderInfo();
+  const headerInfo = getLlmHeaderInfo() ?? extractHeaderInfo();
 
   const headerValue = (value: string, placeholder: string) =>
     value.trim() ? value : placeholder;
 
   const headerListHtml = `<div class="header-list">
     <div>Name: ${escapeHtml(headerValue(headerInfo.name, "[Name]"))}</div>
-    <div>PID: ${escapeHtml(headerValue(headerInfo.pid, "[PID]"))}</div>
+    <div>PID (ORCID): ${escapeHtml(headerValue(headerInfo.pid, "[PID]"))}</div>
     <div>Position Title: ${escapeHtml(
       headerValue(headerInfo.positionTitle, "[Position Title]")
     )}</div>
@@ -697,10 +854,13 @@ export function generateCorrectedDraft(
 
   const commonHeaderHtml = `<div class="header">
     ${headerListHtml}
-    <div class="omb">OMB No. [OMB NO.]<br />Expiration Date: [MM/DD/YYYY]</div>
+    <div class="omb">OMB No. 3145-0279<br />Expiration Date: [MM/DD/YYYY]</div>
   </div>`;
 
-  const supplementHeaderHtml = `<div class="header">${headerListHtml}</div>`;
+  const supplementHeaderHtml = `<div class="header">
+    ${headerListHtml}
+    <div class="omb">OMB No. 0925-0001<br />Expiration Date: [MM/DD/YYYY]</div>
+  </div>`;
 
   const addSection = (
     target: string[],
@@ -709,7 +869,7 @@ export function generateCorrectedDraft(
     markdown: string
   ) => {
     target.push(
-      `<section class="section"><h2>${escapeHtml(title)}</h2>${html}</section>`
+      `<div class="section"><h2>${escapeHtml(title)}</h2>${html}</div>`
     );
     markdownParts.push(`## ${title}\n\n${markdown}\n`);
   };
@@ -723,7 +883,7 @@ export function generateCorrectedDraft(
   markdownParts.push(
     [
       `Name: ${headerValue(headerInfo.name, "[Name]")}`,
-      `PID: ${headerValue(headerInfo.pid, "[PID]")}`,
+    `PID (ORCID): ${headerValue(headerInfo.pid, "[PID]")}`,
       `Position Title: ${headerValue(headerInfo.positionTitle, "[Position Title]")}`,
       `Organization/Location: ${headerValue(
         headerInfo.organization,
@@ -803,10 +963,11 @@ export function generateCorrectedDraft(
   ].join("\n");
   addSection(commonFormParts, "Products", productsHtml, productsMarkdown);
 
-  const certificationText =
-    getSectionContent("certification_statement") ||
-    certificationRule?.exactText ||
-    "";
+  const rawCertification = getSectionContent("certification_statement");
+  const certificationText = normalizeCertificationText(
+    rawCertification,
+    certificationRule?.exactText
+  );
   const signatureName = headerInfo.name.trim()
     ? headerInfo.name
     : "[Name]";
@@ -827,20 +988,38 @@ export function generateCorrectedDraft(
   let personalStatementContent = getSectionContent("personal_statement");
   const inlineHonors = splitInlineSection(personalStatementContent, "Honors");
   personalStatementContent = inlineHonors.main || personalStatementContent;
+  const normalizedPersonalStatement = personalStatementContent
+    .replace(/\s+/g, " ")
+    .trim();
   addSection(
     supplementParts,
     "Personal Statement",
-    escapeOrPlaceholder(personalStatementContent, "TODO: Add Personal Statement"),
-    personalStatementContent || "*TODO: Add Personal Statement*"
+    escapeOrPlaceholder(
+      normalizedPersonalStatement,
+      "TODO: Add Personal Statement"
+    ),
+    normalizedPersonalStatement || "*TODO: Add Personal Statement*"
   );
 
   let honorsContent = getSectionContentByHeading("honors");
+  if (!honorsContent) {
+    honorsContent = getSectionContentByHeading("awards");
+  }
   if (!honorsContent && inlineHonors.extracted) {
     honorsContent = inlineHonors.extracted;
   }
   const honorsList = parseHonors(honorsContent);
+  const llmHonors = getLlmHonors();
   const honorsHtml = honorsList.length
     ? `<ol>${honorsList
+      .map((item) =>
+        `<li>${escapeHtml(item.year)}${item.year ? " - " : ""}${escapeHtml(
+          item.honor
+        )}</li>`
+      )
+      .join("")}</ol>`
+    : llmHonors.length
+    ? `<ol>${llmHonors
       .map((item) =>
         `<li>${escapeHtml(item.year)}${item.year ? " - " : ""}${escapeHtml(
           item.honor
@@ -854,6 +1033,12 @@ export function generateCorrectedDraft(
         (item) => `${item.year}${item.year ? " - " : ""}${item.honor}`.trim()
       )
       .join("\n")
+    : llmHonors.length
+    ? llmHonors
+      .map(
+        (item) => `${item.year}${item.year ? " - " : ""}${item.honor}`.trim()
+      )
+      .join("\n")
     : honorsContent || "*TODO: Add Honors*";
   addSection(supplementParts, "Honors", honorsHtml, honorsMarkdown);
 
@@ -861,12 +1046,12 @@ export function generateCorrectedDraft(
   addSection(
     supplementParts,
     "Contributions to Science",
-    renderContributionsHtml(
+    renderSupplementContributionsHtml(
       biosketchData.contributionsToScience,
       contributionsContent,
       "TODO: Add Contributions to Science"
     ),
-    renderContributionsMarkdown(
+    renderSupplementContributionsMarkdown(
       biosketchData.contributionsToScience,
       contributionsContent,
       "TODO: Add Contributions to Science"

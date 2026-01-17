@@ -1,6 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
+import htmlDocx from "html-docx-js/dist/html-docx";
 
 import { Publication, ValidationResult } from "@/lib/types";
 import { formatCitation } from "@/lib/publications";
@@ -25,6 +28,15 @@ function statusStyles(status: string) {
 
 function downloadFile(filename: string, content: string, type: string) {
   const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadBlob(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -142,6 +154,96 @@ export default function Home() {
     );
   }
 
+  async function handleDownloadCorrectedDocx() {
+    if (!results) return;
+    const docxHtml = `<!DOCTYPE html><html><head><meta charset="utf-8" />
+      <style>
+        #supplement { page-break-before: auto !important; break-before: auto !important; }
+      </style>
+      </head><body>${results.correctedDraftHtml.replace(
+        '<div id="supplement">',
+        '<br style="page-break-before: always;" /><div id="supplement">'
+      )}</body></html>`;
+    const docxBlob = htmlDocx.asBlob(docxHtml);
+    downloadBlob("biosketch-corrected-draft.docx", docxBlob);
+  }
+
+  async function handleDownloadCorrectedPdf() {
+    if (!results) return;
+    const container = document.createElement("div");
+    container.style.position = "absolute";
+    container.style.left = "-9999px";
+    container.style.top = "0";
+    container.style.width = "816px";
+    container.innerHTML = results.correctedDraftHtml;
+    document.body.appendChild(container);
+
+    const supplement = container.querySelector("#supplement") as HTMLElement | null;
+
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+    });
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF({ unit: "pt", format: "letter" });
+    const margin = 24;
+    const pageWidth = pdf.internal.pageSize.getWidth() - margin * 2;
+    const pageHeight = pdf.internal.pageSize.getHeight() - margin * 2;
+    const scale = pageWidth / canvas.width;
+    const pageHeightPx = pageHeight / scale;
+    let renderedHeight = 0;
+    const supplementTopPx =
+      supplement ? supplement.offsetTop * 2 : Number.POSITIVE_INFINITY;
+    let supplementBreakInserted = false;
+
+    while (renderedHeight < canvas.height) {
+      let sliceHeight = Math.min(pageHeightPx, canvas.height - renderedHeight);
+      if (
+        !supplementBreakInserted &&
+        renderedHeight < supplementTopPx &&
+        renderedHeight + sliceHeight > supplementTopPx
+      ) {
+        sliceHeight = Math.max(1, supplementTopPx - renderedHeight);
+        supplementBreakInserted = true;
+      }
+      const sliceCanvas = document.createElement("canvas");
+      sliceCanvas.width = canvas.width;
+      sliceCanvas.height = sliceHeight;
+      const ctx = sliceCanvas.getContext("2d");
+      if (!ctx) break;
+      ctx.drawImage(
+        canvas,
+        0,
+        renderedHeight,
+        canvas.width,
+        sliceHeight,
+        0,
+        0,
+        canvas.width,
+        sliceHeight
+      );
+      const sliceData = sliceCanvas.toDataURL("image/png");
+      const sliceHeightPt = sliceHeight * scale;
+      if (renderedHeight > 0) {
+        pdf.addPage();
+      }
+      pdf.addImage(
+        sliceData,
+        "PNG",
+        margin,
+        margin,
+        pageWidth,
+        sliceHeightPt
+      );
+      renderedHeight += sliceHeight;
+    }
+
+    pdf.save("biosketch-corrected-draft.pdf");
+
+    document.body.removeChild(container);
+  }
+
   function handleExportPublications() {
     if (!results) return;
     downloadFile(
@@ -246,6 +348,18 @@ export default function Home() {
                     onClick={handleDownloadCorrectedDraft}
                   >
                     Download Corrected Draft
+                  </button>
+                  <button
+                    className="rounded-full border border-slate-600 px-5 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-400"
+                    onClick={handleDownloadCorrectedDocx}
+                  >
+                    Download DOCX
+                  </button>
+                  <button
+                    className="rounded-full border border-slate-600 px-5 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-400"
+                    onClick={handleDownloadCorrectedPdf}
+                  >
+                    Download PDF
                   </button>
                 </>
               )}
