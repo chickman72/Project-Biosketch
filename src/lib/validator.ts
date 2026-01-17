@@ -556,12 +556,15 @@ export function validateTemplate(
     const certSections = sections.filter(
       (s) => s.id === "certification_statement"
     );
-    const normalizedExact = certificationRule.exactText
-      .replace(/\s+/g, " ")
-      .trim();
-    biosketchData.certification = certSections.some((section) =>
-      section.content.replace(/\s+/g, " ").trim().includes(normalizedExact)
-    );
+    const exactText = certificationRule.exactText;
+    if (!exactText) {
+      biosketchData.certification = false;
+    } else {
+      const normalizedExact = exactText.replace(/\s+/g, " ").trim();
+      biosketchData.certification = certSections.some((section) =>
+        section.content.replace(/\s+/g, " ").trim().includes(normalizedExact)
+      );
+    }
   }
 
   return { issues, detectedSections: sections, biosketchData };
