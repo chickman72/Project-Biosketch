@@ -40,7 +40,7 @@ export async function processBiosketchFile(
   const template = await loadTemplate();
   const { issues, detectedSections, biosketchData } = validateTemplate(enhancedText, template);
 
-  const corrected = generateCorrectedDraft(detectedSections, template);
+  const corrected = generateCorrectedDraft(detectedSections, template, biosketchData);
 
   const overallStatus = issues.some((issue) => issue.severity === "red")
     ? "red"

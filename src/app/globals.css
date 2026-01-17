@@ -35,3 +35,15 @@ body {
   margin: 0 0 0.75rem;
   color: #e2e8f0;
 }
+
+.corrected-preview .nih-biosketch,
+.corrected-preview .nih-biosketch p,
+.corrected-preview .nih-biosketch li,
+.corrected-preview .nih-biosketch th,
+.corrected-preview .nih-biosketch td {
+  color: #000000;
+}
+
+.corrected-preview .nih-biosketch * {
+  color: #000000;
+}
