@@ -13,7 +13,7 @@ export async function loadTemplate(): Promise<TemplateConfig> {
   const templatePath = path.join(
     process.cwd(),
     "config",
-    "nih-biosketch-template.json"
+    "nih-biosketch-template-2026.json"
   );
   const raw = await readFile(templatePath, "utf-8");
   cachedTemplate = JSON.parse(raw) as TemplateConfig;

@@ -1,0 +1,93 @@
+{
+  "name": "NIH Biosketch (2026)",
+  "version": "2026-01",
+  "requiredSections": [
+    {
+      "id": "personal_statement",
+      "canonicalHeading": "Personal Statement",
+      "variants": ["A. Personal Statement", "Personal Statement"],
+      "minChars": 200,
+      "maxChars": 3500
+    },
+    {
+      "id": "professional_preparation",
+      "canonicalHeading": "Professional Preparation",
+      "variants": ["Professional Preparation"],
+      "minChars": 50
+    },
+    {
+      "id": "appointments_and_positions",
+      "canonicalHeading": "Appointments and Positions",
+      "variants": ["Appointments and Positions"],
+      "minChars": 50
+    },
+    {
+      "id": "contributions_to_science",
+      "canonicalHeading": "Contributions to Science",
+      "variants": ["Contributions to Science", "Contribution to Science"],
+      "minChars": 100,
+      "maxEntries": 5,
+      "maxCharsPerEntry": 2000
+    },
+    {
+      "id": "products_related_to_project",
+      "canonicalHeading": "Products Related to Project",
+      "variants": [
+        "Products Related to This Project",
+        "Products Related to Project",
+        "Products Related to the Proposed Project",
+        "Products Closely Related to the Proposed Project"
+      ],
+      "maxEntries": 5
+    },
+    {
+      "id": "other_significant_products",
+      "canonicalHeading": "Other Significant Products",
+      "variants": [
+        "Other Significant Products",
+        "Other Significant Products, Whether or Not Related to the Proposed Project"
+      ],
+      "maxEntries": 5
+    },
+    {
+      "id": "certification_statement",
+      "canonicalHeading": "Certification",
+      "variants": ["Certification"],
+      "exactText": "I certify that the information provided is current, accurate, and complete. This includes but is not limited to information related to domestic and foreign appointments and positions."
+    }
+  ],
+  "optionalSections": [
+    {
+      "id": "nih_biosketch_form",
+      "canonicalHeading": "NIH Biographical Sketch Form",
+      "variants": [
+        "NIH Biographical Sketch Form",
+        "NIH Biographical Sketch Common Form",
+        "NIH Biographical Sketch PREVIEW Common Form"
+      ]
+    },
+    {
+      "id": "nih_biosketch_supplement",
+      "canonicalHeading": "NIH Biographical Sketch Supplement",
+      "variants": ["NIH Biographical Sketch Supplement"]
+    },
+    {
+      "id": "products_header",
+      "canonicalHeading": "Products",
+      "variants": ["Products"]
+    }
+  ],
+  "order": [
+    "professional_preparation",
+    "appointments_and_positions",
+    "products_related_to_project",
+    "other_significant_products",
+    "personal_statement",
+    "contributions_to_science",
+    "certification_statement"
+  ],
+  "unknownHeadingHeuristic": {
+    "maxHeadingLength": 80,
+    "allowAllCaps": true
+  }
+}

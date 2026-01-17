@@ -61,6 +61,7 @@ export default function Home() {
   const [tab, setTab] = useState<TabKey>("status");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const formattedCitations = useMemo(() => {
     if (!results) return [];
@@ -178,7 +179,37 @@ export default function Home() {
               Drag and drop a .docx or .pdf file (PDF is best-effort).
               Files are processed transiently and not stored.
             </p>
-            <label className="flex h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 text-sm text-slate-300 transition hover:border-slate-500">
+            <label
+              className={`flex h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed bg-slate-950/40 text-sm text-slate-300 transition ${
+                isDragging
+                  ? "border-emerald-400 bg-emerald-400/10 text-emerald-100"
+                  : "border-slate-700 hover:border-slate-500"
+              }`}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setIsDragging(true);
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setIsDragging(true);
+              }}
+              onDragLeave={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setIsDragging(false);
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const dropped = event.dataTransfer?.files?.[0] ?? null;
+                if (dropped) {
+                  setFile(dropped);
+                }
+                setIsDragging(false);
+              }}
+            >
               <input
                 type="file"
                 accept=".docx,.pdf"
@@ -308,9 +339,9 @@ export default function Home() {
 
             {tab === "findings" && (
               <div className="flex flex-col gap-3">
-                {results.issues.map((issue) => (
+                {results.issues.map((issue, index) => (
                   <div
-                    key={issue.id}
+                    key={`${issue.id}-${issue.section ?? "general"}-${index}`}
                     className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5"
                   >
                     <div className="flex flex-wrap items-center gap-3">

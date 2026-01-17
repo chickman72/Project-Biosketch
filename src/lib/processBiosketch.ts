@@ -38,22 +38,7 @@ export async function processBiosketchFile(
     : parsed.text;
 
   const template = await loadTemplate();
-  const { issues, detectedSections } = validateTemplate(enhancedText, template);
-
-  const publicationSections = detectedSections.filter((section) =>
-    ["contributions_science", "publications"].includes(section.id)
-  );
-  const rawPublicationText = publicationSections
-    .map((section) => section.content)
-    .join("\n\n");
-
-  const publicationBlocks = rawPublicationText
-    ? rawPublicationText.split(/\n{2,}/)
-    : [];
-  const enhancedCitations = enhancer.enabled
-    ? await enhancer.enhanceCitations(publicationBlocks)
-    : publicationBlocks;
-  const publications = extractPublications(enhancedCitations.join("\n\n"));
+  const { issues, detectedSections, biosketchData } = validateTemplate(enhancedText, template);
 
   const corrected = generateCorrectedDraft(detectedSections, template);
 
@@ -63,13 +48,20 @@ export async function processBiosketchFile(
     ? "yellow"
     : "green";
 
+  const allPublications = [
+      ...(biosketchData.products_related_to_project || []),
+      ...(biosketchData.other_significant_products || []),
+      ...(biosketchData.contributionsToScience?.flatMap(c => c.products) || [])
+  ];
+
   return {
     overallStatus,
     issues,
     detectedSections,
     correctedDraftHtml: corrected.html,
     correctedDraftMarkdown: corrected.markdown,
-    publications,
+    publications: allPublications,
     lowConfidence: parsed.lowConfidence,
+    biosketchData,
   };
 }

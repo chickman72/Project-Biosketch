@@ -51,7 +51,7 @@ function parseCitation(raw: string): Publication {
 
   if (yearMatch) {
     const idx = yearMatch.index ?? -1;
-    authors = raw.slice(0, idx).trim().replace(/[.;,\s]+$/, "");
+    authors = raw.slice(0, idx).trim().replace(/\s*\($/, '').replace(/[.;,]+$/, '');
     const afterYear = raw.slice(idx + yearMatch[0].length).trim();
     const titleMatch = afterYear.match(/^[\.\s]*([^\.]+)\./);
     if (titleMatch) {
