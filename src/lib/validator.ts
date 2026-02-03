@@ -42,54 +42,82 @@ function checkForPII(text: string): Issue[] {
 }
 
 function parseProfessionalPreparation(text: string): ProfessionalPreparation[] {
-    const entries: ProfessionalPreparation[] = [];
-    const lines = text.split('\n').filter(line => line.trim() !== '');
+  const entries: ProfessionalPreparation[] = [];
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+  const dateRegex = /(\d{2}\/\d{4})\s*-\s*(\d{2}\/\d{4})/;
 
-    for (const line of lines) {
-        const parts = line.split(',').map(p => p.trim());
-        if (parts.length >= 4) { // Heuristic: inst, loc, degree, dates, field
-            try {
-                const datePartIndex = parts.findIndex(p => /\d{2}\/\d{4}\s*-\s*\d{2}\/\d{4}/.test(p));
-                if (datePartIndex === -1) continue;
+  for (const line of lines) {
+    const columnSplit = line.includes("\t")
+      ? line.split("\t")
+      : line.split(/\s{2,}/);
+    const columns = columnSplit.map((item) => item.trim()).filter(Boolean);
+    const dateIndex = columns.findIndex((item) => dateRegex.test(item));
 
-                const dates = parts[datePartIndex];
-                const degree = parts[datePartIndex - 1];
-                const fieldOfStudy = parts[datePartIndex + 1];
-                const institution = parts[0];
-                const location = parts.slice(1, datePartIndex - 1).join(', ');
+    if (columns.length >= 4 && dateIndex > -1) {
+      const dateMatch = columns[dateIndex].match(dateRegex);
+      if (!dateMatch) continue;
+      const institution = columns[0] ?? "";
+      const degree = columns[dateIndex - 1] ?? "";
+      const location = columns.slice(1, Math.max(1, dateIndex - 1)).join(", ");
+      const fieldOfStudy = columns.slice(dateIndex + 1).join(" ").trim();
 
-                const startDateMatch = dates.match(/(\d{2}\/\d{4})/);
-                const completionDateMatch = dates.match(/-\s*(\d{2}\/\d{4})/);
+      const entry: ProfessionalPreparation = {
+        institution,
+        location,
+        degree,
+        startDate: dateMatch[1],
+        completionDate: dateMatch[2],
+        fieldOfStudy,
+      };
 
-                const entry: ProfessionalPreparation = {
-                    institution: institution || '',
-                    location: location || '',
-                    degree: degree || '',
-                    startDate: startDateMatch ? startDateMatch[0] : '',
-                    completionDate: completionDateMatch ? completionDateMatch[0].replace(/-\s*/, '') : '',
-                    fieldOfStudy: fieldOfStudy || '',
-                };
-
-                if (entry.institution && entry.degree && entry.startDate && entry.completionDate) {
-                    entries.push(entry);
-                }
-            } catch (e) {
-                // Ignore lines that don't parse
-            }
-        }
+      if (entry.institution && entry.degree && entry.startDate && entry.completionDate) {
+        entries.push(entry);
+        continue;
+      }
     }
 
-    // Sort by start date, reverse chronological
-    entries.sort((a, b) => {
-        const [aMonth, aYear] = a.startDate.split('/');
-        const [bMonth, bYear] = b.startDate.split('/');
-        if (aYear !== bYear) {
-            return parseInt(bYear) - parseInt(aYear);
-        }
-        return parseInt(bMonth) - parseInt(aMonth);
-    });
+    const dateMatch = line.match(dateRegex);
+    if (!dateMatch || dateMatch.index === undefined) {
+      continue;
+    }
+    const left = line.slice(0, dateMatch.index).replace(/[,;]\s*$/, "").trim();
+    const right = line.slice(dateMatch.index + dateMatch[0].length).trim();
+    const parts = left.split(",").map((part) => part.trim()).filter(Boolean);
+    if (parts.length < 2) {
+      continue;
+    }
+    const institution = parts[0];
+    const degree = parts[parts.length - 1] ?? "";
+    const location = parts.slice(1, -1).join(", ");
+    const fieldOfStudy = right.replace(/^[,;\s]+/, "").trim();
 
-    return entries;
+    const entry: ProfessionalPreparation = {
+      institution,
+      location,
+      degree,
+      startDate: dateMatch[1],
+      completionDate: dateMatch[2],
+      fieldOfStudy,
+    };
+
+    if (entry.institution && entry.degree && entry.startDate && entry.completionDate) {
+      entries.push(entry);
+    }
+  }
+
+  entries.sort((a, b) => {
+    const [aMonth, aYear] = a.startDate.split("/");
+    const [bMonth, bYear] = b.startDate.split("/");
+    if (aYear !== bYear) {
+      return parseInt(bYear) - parseInt(aYear);
+    }
+    return parseInt(bMonth) - parseInt(aMonth);
+  });
+
+  return entries;
 }
 
 

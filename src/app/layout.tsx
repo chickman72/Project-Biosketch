@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Biosketch & Grant Package QA Copilot",
+  title: "NIH Biosketch Migration Assistant",
   description:
-    "Validate NIH biosketch structure, extract publications, and generate corrected drafts.",
+    "Upload a CV or biosketch to validate against 2026 Common Form rules and generate SciENcv-ready text blocks.",
 };
 
 export default function RootLayout({

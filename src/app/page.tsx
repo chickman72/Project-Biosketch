@@ -1,8 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
 import htmlDocx from "html-docx-js/dist/html-docx";
 
 import { Publication, ValidationResult } from "@/lib/types";
@@ -46,24 +44,22 @@ function downloadBlob(filename: string, blob: Blob) {
 }
 
 function publicationsToCsv(publications: Publication[]) {
-  const header = [
-    "authors",
-    "year",
-    "title",
-    "journal_or_source",
-    "doi_or_pmid",
-    "raw_citation",
-    "confidence",
-  ];
-  const rows = publications.map((pub) =>
-    header
-      .map((key) => {
-        const value = pub[key as keyof Publication];
-        const str = value === null || value === undefined ? "" : String(value);
-        return `"${str.replace(/"/g, '""')}"`
+  const header = ["Authors", "Title", "Journal", "Year", "PMID/PMCID"];
+  const rows = publications.map((pub) => {
+    const values = [
+      pub.authors,
+      pub.title,
+      pub.journal_or_source ?? "",
+      pub.year ?? "",
+      pub.doi_or_pmid ?? "",
+    ];
+    return values
+      .map((value) => {
+        const str = String(value ?? "").replace(/\r?\n/g, " ");
+        return `"${str.replace(/"/g, '""')}"`;
       })
-      .join(",")
-  );
+      .join(",");
+  });
   return [header.join(","), ...rows].join("\n");
 }
 
@@ -107,51 +103,11 @@ export default function Home() {
     }
   }
 
-  function handleDownloadFixList() {
-    if (!results) return;
-    const payload = {
-      generatedAt: new Date().toISOString(),
-      overallStatus: results.overallStatus,
-      issues: results.issues,
-      detectedSections: results.detectedSections.map((section) => ({
-        id: section.id,
-        canonicalHeading: section.canonicalHeading,
-        originalHeading: section.originalHeading,
-      })),
-    };
-    downloadFile(
-      "biosketch-fix-list.json",
-      JSON.stringify(payload, null, 2),
-      "application/json"
-    );
-    const markdown = [
-      `# Biosketch Fix List`,
-      "",
-      `Status: ${results.overallStatus.toUpperCase()}`,
-      "",
-      "## Issues",
-      ...results.issues.map(
-        (issue, idx) =>
-          `${idx + 1}. [${issue.severity.toUpperCase()}] ${issue.title} - ${
-            issue.description
-          }`
-      ),
-    ].join("\n");
-    downloadFile("biosketch-fix-list.md", markdown, "text/markdown");
-  }
-
-  function handleDownloadCorrectedDraft() {
-    if (!results) return;
-    downloadFile(
-      "biosketch-corrected-draft.md",
-      results.correctedDraftMarkdown,
-      "text/markdown"
-    );
-    downloadFile(
-      "biosketch-corrected-draft.html",
-      results.correctedDraftHtml,
-      "text/html"
-    );
+  function handleClear() {
+    setFile(null);
+    setResults(null);
+    setError(null);
+    setTab("status");
   }
 
   async function handleDownloadCorrectedDocx() {
@@ -166,82 +122,6 @@ export default function Home() {
       )}</body></html>`;
     const docxBlob = htmlDocx.asBlob(docxHtml);
     downloadBlob("biosketch-corrected-draft.docx", docxBlob);
-  }
-
-  async function handleDownloadCorrectedPdf() {
-    if (!results) return;
-    const container = document.createElement("div");
-    container.style.position = "absolute";
-    container.style.left = "-9999px";
-    container.style.top = "0";
-    container.style.width = "816px";
-    container.innerHTML = results.correctedDraftHtml;
-    document.body.appendChild(container);
-
-    const supplement = container.querySelector("#supplement") as HTMLElement | null;
-
-    const canvas = await html2canvas(container, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-    });
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF({ unit: "pt", format: "letter" });
-    const margin = 24;
-    const pageWidth = pdf.internal.pageSize.getWidth() - margin * 2;
-    const pageHeight = pdf.internal.pageSize.getHeight() - margin * 2;
-    const scale = pageWidth / canvas.width;
-    const pageHeightPx = pageHeight / scale;
-    let renderedHeight = 0;
-    const supplementTopPx =
-      supplement ? supplement.offsetTop * 2 : Number.POSITIVE_INFINITY;
-    let supplementBreakInserted = false;
-
-    while (renderedHeight < canvas.height) {
-      let sliceHeight = Math.min(pageHeightPx, canvas.height - renderedHeight);
-      if (
-        !supplementBreakInserted &&
-        renderedHeight < supplementTopPx &&
-        renderedHeight + sliceHeight > supplementTopPx
-      ) {
-        sliceHeight = Math.max(1, supplementTopPx - renderedHeight);
-        supplementBreakInserted = true;
-      }
-      const sliceCanvas = document.createElement("canvas");
-      sliceCanvas.width = canvas.width;
-      sliceCanvas.height = sliceHeight;
-      const ctx = sliceCanvas.getContext("2d");
-      if (!ctx) break;
-      ctx.drawImage(
-        canvas,
-        0,
-        renderedHeight,
-        canvas.width,
-        sliceHeight,
-        0,
-        0,
-        canvas.width,
-        sliceHeight
-      );
-      const sliceData = sliceCanvas.toDataURL("image/png");
-      const sliceHeightPt = sliceHeight * scale;
-      if (renderedHeight > 0) {
-        pdf.addPage();
-      }
-      pdf.addImage(
-        sliceData,
-        "PNG",
-        margin,
-        margin,
-        pageWidth,
-        sliceHeightPt
-      );
-      renderedHeight += sliceHeight;
-    }
-
-    pdf.save("biosketch-corrected-draft.pdf");
-
-    document.body.removeChild(container);
   }
 
   function handleExportPublications() {
@@ -263,14 +143,14 @@ export default function Home() {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-14">
         <header className="flex flex-col gap-4">
           <p className="text-sm uppercase tracking-[0.3em] text-slate-400">
-            Biosketch & Grant Package QA Copilot
+            SciENcv Migration Assistant
           </p>
           <h1 className="text-4xl font-semibold text-slate-50 md:text-5xl">
-            NIH Biosketch validation and publication extraction
+            NIH Biosketch Migration Assistant
           </h1>
           <p className="max-w-3xl text-base text-slate-300 md:text-lg">
-            Upload a NIH-style biosketch to validate structure, flag formatting
-            issues, extract publications, and generate a corrected draft.
+            Upload your existing CV or Biosketch to validate against 2026 Common
+            Form rules and generate SciENcv-ready text blocks.
           </p>
         </header>
 
@@ -339,27 +219,15 @@ export default function Home() {
                 <>
                   <button
                     className="rounded-full border border-slate-600 px-5 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-400"
-                    onClick={handleDownloadFixList}
-                  >
-                    Download Fix List
-                  </button>
-                  <button
-                    className="rounded-full border border-slate-600 px-5 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-400"
-                    onClick={handleDownloadCorrectedDraft}
-                  >
-                    Download Corrected Draft
-                  </button>
-                  <button
-                    className="rounded-full border border-slate-600 px-5 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-400"
                     onClick={handleDownloadCorrectedDocx}
                   >
-                    Download DOCX
+                    Download Corrected Draft (.docx)
                   </button>
                   <button
                     className="rounded-full border border-slate-600 px-5 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-400"
-                    onClick={handleDownloadCorrectedPdf}
+                    onClick={handleClear}
                   >
-                    Download PDF
+                    Clear
                   </button>
                 </>
               )}
@@ -424,29 +292,46 @@ export default function Home() {
             </div>
 
             {tab === "status" && (
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="flex flex-col gap-4">
                 <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5">
-                  <p className="text-sm text-slate-400">Required sections</p>
-                  <p className="text-2xl font-semibold text-slate-50">
-                    {results.detectedSections.length}
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    Validation checklist
                   </p>
+                  <ul className="mt-3 space-y-2 text-sm text-slate-200">
+                    <li>✅ PII Check (No home address/phone detected)</li>
+                    <li>✅ Personal Statement Length (&lt; 3,500 chars)</li>
+                    <li>✅ Contribution to Science Count (Max 5 items)</li>
+                    <li>✅ Contribution Length (&lt; 2,000 chars each)</li>
+                    <li>
+                      ✅ Product Formatting (Split into "Related" &
+                      "Significant")
+                    </li>
+                  </ul>
                 </div>
-                <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5">
-                  <p className="text-sm text-slate-400">Red findings</p>
-                  <p className="text-2xl font-semibold text-slate-50">
-                    {results.issues.filter((issue) => issue.severity === "red")
-                      .length}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5">
-                  <p className="text-sm text-slate-400">Yellow findings</p>
-                  <p className="text-2xl font-semibold text-slate-50">
-                    {
-                      results.issues.filter(
-                        (issue) => issue.severity === "yellow"
-                      ).length
-                    }
-                  </p>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5">
+                    <p className="text-sm text-slate-400">Required sections</p>
+                    <p className="text-2xl font-semibold text-slate-50">
+                      {results.detectedSections.length}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5">
+                    <p className="text-sm text-slate-400">Red findings</p>
+                    <p className="text-2xl font-semibold text-slate-50">
+                      {results.issues.filter((issue) => issue.severity === "red")
+                        .length}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5">
+                    <p className="text-sm text-slate-400">Yellow findings</p>
+                    <p className="text-2xl font-semibold text-slate-50">
+                      {
+                        results.issues.filter(
+                          (issue) => issue.severity === "yellow"
+                        ).length
+                      }
+                    </p>
+                  </div>
                 </div>
               </div>
             )}

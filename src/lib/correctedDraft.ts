@@ -78,6 +78,13 @@ export function generateCorrectedDraft(
       padding: 4px 6px;
       margin: 12px 0 6px;
     }
+    .nih-biosketch .instruction-label {
+      font-size: 9pt;
+      font-style: italic;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin: 8px 0 4px;
+    }
     .nih-biosketch h3 {
       font-size: 11pt;
       font-weight: bold;
@@ -868,10 +875,13 @@ export function generateCorrectedDraft(
     html: string,
     markdown: string
   ) => {
+    const label = `[COPY INTO SCIENCV: ${title.toUpperCase()}]`;
     target.push(
-      `<div class="section"><h2>${escapeHtml(title)}</h2>${html}</div>`
+      `<div class="section"><div class="instruction-label">${escapeHtml(
+        label
+      )}</div><h2>${escapeHtml(title)}</h2>${html}</div>`
     );
-    markdownParts.push(`## ${title}\n\n${markdown}\n`);
+    markdownParts.push(`*${label}*\n\n## ${title}\n\n${markdown}\n`);
   };
 
   commonFormParts.push("<h1>NIH BIOGRAPHICAL SKETCH COMMON FORM</h1>");
